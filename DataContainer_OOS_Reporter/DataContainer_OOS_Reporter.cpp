@@ -1,9 +1,9 @@
 ﻿
 
 #include <fstream>
-#include "DataContainer_OOS_Reporter.h"
 #include "Parsing/parsing.hpp"
 #include <unordered_set>
+#include <iostream>
 
 static std::unordered_set<std::string> dcon_ids{};
 
@@ -24,6 +24,8 @@ std::string get_comment_header(const std::string& dcon_file_path) {
 		"// EDIT AT YOUR OWN RISK; all changes will be lost upon regeneration\n" +
 		"// NOT SUITABLE FOR USE IN CRITICAL SOFTWARE WHERE LIVES OR LIVELIHOODS DEPEND ON THE CORRECT OPERATION\n";
 }
+
+
 
 std::string get_dcon_typename(const std::string object_name) {
 	std::string result{ };
@@ -142,6 +144,40 @@ std::string get_end_curly_bracket(uint32_t indent) {
 	return add_indent(indent) + "}\n";
 }
 
+
+std::string get_string_template_function_definition(uint32_t indent) {
+	return add_indent(indent) + "template<typename T>\n" +
+		add_indent(indent) + "std::string get_string(T input)\n" +
+		get_start_curly_bracket(indent) +
+		add_indent(indent + 1) + "if constexpr(requires{ std::to_string(input); } )\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return std::to_string(input);\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else if constexpr(requires{ input.to_string(); })\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return input.to_string();\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else if constexpr(requires{ std::to_string(input.value); })\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return std::to_string(input.value);\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else if constexpr(std::is_same<T, bool>::value)\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return input ? \"true\" : \"false\";\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return \"\"\n" +
+		get_end_curly_bracket(indent + 1) +
+		get_end_curly_bracket(indent);
+
+}
+
+std::string get_string_func_call(const std::string& variable) {
+	return "get_string(" + variable + ")";
+}
+
+
 std::string append_to_final_report(const std::string& to_append, uint32_t indent, bool header) {
 	if(header) {
 		return add_indent(indent) + final_report_name + " += std::string(" + to_append + ") + \"\\n\";\n";
@@ -192,9 +228,6 @@ std::string get_dconarray_items_check(const std::string& object_name, const prop
 	std::string result{};
 	// we dont expect the total string to be larger than this, so pre-allocate
 	result.reserve(360);
-	if (object_name == "commodity" && property.name == "price_record") {
-		int c = 5;
-	}
 
 	result += add_indent(indent) + "uint32_t min_arr_size = std::min(" + get_dcon_array_size(object_name, property, container_1_name) + ", " + get_dcon_array_size(object_name, property, container_2_name) + ");\n" +
 		add_indent(indent) + "for(uint32_t j = 0;j < min_arr_size;j++)\n" +
@@ -207,38 +240,22 @@ std::string get_dconarray_items_check(const std::string& object_name, const prop
 		result += add_indent(indent + 1) + "auto " + dcon_array_index_name + " = j;\n";
 		integer_index = true;
 	}
-	if (property.data_type == "float" || property.data_type == "uint32_t" || property.data_type == "int32_t" || property.data_type == "int16_t" || property.data_type == "uint16_t" || property.data_type == "uint8_t" || property.data_type == "int8_t") {
-			
-		result += get_dcon_array_element_if_comparison(object_name, property, indent + 1, integer_index) +
-			get_start_curly_bracket(indent + 1) +
-			add_indent(indent + 2) + "std::string cont_1_arr_val = std::to_string(" + get_dcon_array_element(object_name, property, container_1_name, integer_index) + ");\n" +
-			add_indent(indent + 2) + "std::string cont_2_arr_val = std::to_string(" + get_dcon_array_element(object_name, property, container_1_name, integer_index) + ");\n" +
-			append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", array index: \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false) +
-			get_end_curly_bracket(indent + 1);
-	}
-	
-	// handle references to other dcon ids
-	else if (property.data_type.ends_with("_id")) {
-		result +=
-			add_indent(indent + 1) + get_dcon_typename(property.data_type) + " cont_1_arr_id = " + get_dcon_array_element(object_name, property, container_1_name, integer_index) + ";\n" +
-			add_indent(indent + 1) + get_dcon_typename(property.data_type) + " cont_2_arr_id = " + get_dcon_array_element(object_name, property, container_2_name, integer_index) + ";\n" +
-			get_variable_if_comparison("cont_2_arr_id", "cont_2_arr_id", indent + 1) +
-			get_start_curly_bracket(indent + 1) +
-			add_indent(indent + 2) + "std::string cont_1_arr_val = std::to_string(cont_1_arr_id.value);\n" +
-			add_indent(indent + 2) + "std::string cont_2_arr_val = std::to_string(cont_2_arr_id.value);\n" +
-			append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", array index: \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false) +
-			get_end_curly_bracket(indent + 1);
-	}
 
-
-	else if (property.type == property_type::array_bitfield) {
-		result += get_dcon_array_element_if_comparison(object_name, property, indent + 1, integer_index) +
-			get_start_curly_bracket(indent + 1) +
-			add_indent(indent + 2) + "std::string cont_1_arr_val = " + get_dcon_array_element(object_name, property, container_1_name, integer_index) + " ? \"true\" : \"false\";\n" +
-			add_indent(indent + 2) + "std::string cont_1_arr_val = " + get_dcon_array_element(object_name, property, container_2_name, integer_index) + " ? \"true\" : \"false\";\n" +
-			append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", array index: \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false) +
-			get_end_curly_bracket(indent + 1);
+	if (dcon_ids.contains(property.data_type)) {
+		result += add_indent(indent + 1) + get_dcon_typename(property.data_type) + " cont_1_arr_val = " + get_dcon_array_element(object_name, property, container_1_name, integer_index) + ";\n" +
+			add_indent(indent + 1) + get_dcon_typename(property.data_type) + " cont_2_arr_val = " + get_dcon_array_element(object_name, property, container_2_name, integer_index) + ";\n";
 	}
+	else {
+		result += add_indent(indent + 1) + "const auto& cont_1_arr_val = " + get_dcon_array_element(object_name, property, container_1_name, integer_index) + ";\n" +
+			add_indent(indent + 1) + "const auto& cont_2_arr_val = " + get_dcon_array_element(object_name, property, container_2_name, integer_index) + ";\n";
+	}
+	result += get_variable_if_comparison("cont_1_arr_val", "cont_2_arr_val", indent + 1) +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "std::string cont_1_arr_str = " + get_string_func_call("cont_1_arr_val") + ";\n" +
+		add_indent(indent + 2) + "std::string cont_2_arr_str = " + get_string_func_call("cont_2_arr_val") + ";\n" +
+		append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", array index: \" + std::to_string(j) + \": \" + cont_1_arr_str + \", \" + cont_2_arr_str", indent + 2, false) +
+		get_end_curly_bracket(indent + 1);
+
 	result += get_end_curly_bracket(indent);
 	return result;
 }
@@ -249,122 +266,52 @@ std::string get_specialvector_items_check(const std::string& object_name, const 
 	// we dont expect the total string to be larger than this, so pre-allocate
 	result.reserve(360);
 
-	bool can_write_datatype = false;
-
 	result += add_indent(indent) + "uint32_t min_arr_size = std::min(" + vector_obj_name_1 + "." + "size(), " + vector_obj_name_2 + "." + "size());\n" +
 		add_indent(indent) + "for(uint32_t j = 0;j < min_arr_size;j++)\n" +
 		get_start_curly_bracket(indent) +
 		add_indent(indent + 1) + "if(" + vector_obj_name_1 + "[j]" + " != " + vector_obj_name_2 + "[j]" + ")\n" +
 		get_start_curly_bracket(indent + 1);
-	if (property.data_type == "float" || property.data_type == "uint32_t" || property.data_type == "int32_t" || property.data_type == "int16_t" || property.data_type == "uint16_t" || property.data_type == "uint8_t" || property.data_type == "int8_t") {
-			
-		result +=
-		add_indent(indent + 2) + "std::string cont_1_arr_val = std::to_string(" + vector_obj_name_1 + "[j]);\n" +
-		add_indent(indent + 2) + "std::string cont_2_arr_val = std::to_string(" + vector_obj_name_2 + "[j]);\n";
-		can_write_datatype = true;
-	}
-	
-	// handle references to other dcon ids
 	if (dcon_ids.contains(property.data_type)) {
-		result += add_indent(indent + 2) + get_dcon_typename(property.data_type) + " cont_1_arr_id = " + vector_obj_name_1 + "[j];\n" +
-			add_indent(indent + 2) + get_dcon_typename(property.data_type) + " cont_2_arr_id = " + vector_obj_name_2 + "[j];\n" +
-			add_indent(indent + 2) + "std::string cont_1_arr_val = std::to_string(cont_1_arr_id.value);\n" +
-			add_indent(indent + 2) + "std::string cont_2_arr_val = std::to_string(cont_2_arr_id.value);\n";
-		can_write_datatype = true;
-	}
-	else if (property.name == "bool") {
-		result += add_indent(indent + 2) + "std::string cont_1_arr_val = " + vector_obj_name_1 + "[j] ? \"true\" : \"false\";\n" +
-			add_indent(indent + 2) + "std::string cont_2_arr_val = " + vector_obj_name_2 + "[j] ? \"true\" : \"false\";\n";
-		can_write_datatype = true;
-	}
-	if (can_write_datatype) {
-		result += append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", vector index: \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false);
+		result += add_indent(indent + 2) + get_dcon_typename(property.data_type) + " cont_1_arr_val = " + vector_obj_name_1 + "[j];\n" +
+			add_indent(indent + 2) + get_dcon_typename(property.data_type) + " cont_2_arr_val = " + vector_obj_name_2 + "[j];\n";
 	}
 	else {
-		result += append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", vector index: \" + std::to_string(j)", indent + 2, false);
+		result += add_indent(indent + 2) + "const auto& cont_1_arr_val = " + vector_obj_name_1 + "[j];\n" +
+			add_indent(indent + 2) + "const auto& cont_2_arr_val = " + vector_obj_name_2 + "[j];\n";
 	}
+	result += add_indent(indent + 2) + "std::string cont_1_arr_str = " + get_string_func_call("cont_1_arr_val") + ";\n" +
+		add_indent(indent + 2) + "std::string cont_2_arr_str = " + get_string_func_call("cont_2_arr_val") + ";\n" +
+		append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", vector index: \" + std::to_string(j) + \": \" + cont_1_arr_str + \", \" + cont_2_arr_str", indent + 2, false);
+	
 	result += get_end_curly_bracket(indent + 1);
 	result += get_end_curly_bracket(indent);
 	return result;
-
-
-
-	//if (property.type == property_type::other) {
-	//	if (property.data_type == "float" || property.data_type == "uint32_t" || property.data_type == "int32_t" || property.data_type == "int16_t" || property.data_type == "uint16_t" || property.data_type == "uint8_t" || property.data_type == "int8_t") {
-
-	//			get_start_curly_bracket(indent + 1) +
-	//			add_indent(indent + 2) + "std::string cont_1_arr_val = std::to_string(" + array_vector_obj_name_1 + "[j]);\n" +
-	//			add_indent(indent + 2) + "std::string cont_2_arr_val = std::to_string(" + array_vector_obj_name_2 + "[j]);\n" +
-	//			append_to_final_report("\"ID \" + std::to_string(" + dcon_obj_id + ") + \" property \" + \"" + property.name + ", vector index \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false) +
-	//			get_end_curly_bracket(indent + 1);
-	//	}
-	//	// handle references to other dcon ids
-	//	else if (property.data_type.ends_with("_id")) {
-	//			get_start_curly_bracket(indent + 1) +
-	//			add_indent(indent + 2) + get_dcon_typename_w_id(property.data_type) + " cont_1_arr_id = " + array_vector_obj_name_1 + "[j];\n" +
-	//			add_indent(indent + 2) + get_dcon_typename_w_id(property.data_type) + " cont_2_arr_id = " + array_vector_obj_name_2 + "[j];\n" +
-	//			add_indent(indent + 2) + "std::string cont_1_arr_val = std::to_string(cont_1_arr_id.value);\n" +
-	//			add_indent(indent + 2) + "std::string cont_2_arr_val = std::to_string(cont_2_arr_id.value);\n" +
-	//			append_to_final_report("\"ID \" + std::to_string(" + dcon_obj_id + ") + \" property \" + \"" + property.name + ", vector index \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false) +
-	//			get_end_curly_bracket(indent + 1);
-	//	}
-	//}
-	//else if (property.type == property_type::bitfield) {
-	//		get_start_curly_bracket(indent + 1) +
-	//		add_indent(indent + 2) + "std::string cont_1_arr_val = " + array_vector_obj_name_1 + "[j] ? \"true\" : \"false\";\n" +
-	//		add_indent(indent + 2) + "std::string cont_2_arr_val = " + array_vector_obj_name_2 + "[j] ? \"true\" : \"false\";\n" +
-	//		append_to_final_report("\"ID \" + std::to_string(" + dcon_obj_id + ") + \" property \" + \"" + property.name + ", vector index \" + std::to_string(j) + \": \" + cont_1_arr_val + \", \" + cont_2_arr_val", indent + 2, false) +
-	//		get_end_curly_bracket(indent + 1);
-	//}
-	//else {
-	//		get_start_curly_bracket(indent + 1) +
-	//		append_to_final_report("\"ID \" + std::to_string(" + dcon_obj_id + ") + \" property \" + \"" + property.name + ", vector index \" + std::to_string(j)", indent + 2, false) +
-	//		get_end_curly_bracket(indent + 1);
-	//}
-	//result += get_end_curly_bracket(indent);
-	//return result;
-
-
-
-
 }
 
 
 std::string get_object_property_check(const std::string& object_name, const property_def& property, uint32_t& indent) {
 	std::string result{};
 
-	if (property.type == property_type::other) {
-		if (property.data_type == "float" || property.data_type == "uint32_t" || property.data_type == "int32_t" || property.data_type == "int16_t" || property.data_type == "uint16_t" || property.data_type == "uint8_t" || property.data_type == "int8_t") {
-
-			result = get_property_if_comparison(object_name, property, indent) +
-				get_start_curly_bracket(indent) +
-				add_indent(indent + 1) + "std::string cont_1_val = std::to_string(" + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + "));\n" +
-				add_indent(indent + 1) + "std::string cont_2_val = std::to_string(" + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + "));\n" +
-				append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 1, false) +
-				get_end_curly_bracket(indent);
-		}
-		// handle references to other dcon ids
+	if (property.type == property_type::other || property.type == property_type::bitfield) {
+		// handle references to other dcon ids. They must be casted to the "basic" dcon type instead of the "fat" type to compare properly
 		if (dcon_ids.contains(property.data_type)) {
-			result = add_indent(indent) + get_dcon_typename(property.data_type) + " cont_1_id = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
-				add_indent(indent) + get_dcon_typename(property.data_type) + " cont_2_id = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
-				get_variable_if_comparison("cont_1_id", "cont_2_id", indent) +
-				get_start_curly_bracket(indent) +
-				add_indent(indent + 1) + "std::string cont_1_val = std::to_string(cont_1_id.value);\n" +
-				add_indent(indent + 1) + "std::string cont_2_val = std::to_string(cont_2_id.value);\n" +
-				append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 1, false) +
-				get_end_curly_bracket(indent);
+			result += add_indent(indent) + get_dcon_typename(property.data_type) + " cont_1_val = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
+				add_indent(indent) + get_dcon_typename(property.data_type) + " cont_2_val = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n";
 		}
-	}
-	else if (property.type == property_type::bitfield) {
-		result = get_property_if_comparison(object_name, property, indent) +
-		get_start_curly_bracket(indent) +
-		add_indent(indent + 1) + "std::string cont_1_val = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ") ? \"true\" : \"false\";\n" +
-		add_indent(indent + 1) + "std::string cont_2_val = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ") ? \"true\" : \"false\";\n" +
-		append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 1, false) +
-		get_end_curly_bracket(indent);
+		else {
+			result += add_indent(indent) + "const auto& cont_1_val = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
+				add_indent(indent) + "const auto& cont_2_val = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n";
+		}
+
+		result += get_variable_if_comparison("cont_1_val", "cont_2_val", indent) +
+			get_start_curly_bracket(indent) +
+			add_indent(indent + 1) + "std::string cont_1_str = " + get_string_func_call("cont_1_val") + ";\n" +
+			add_indent(indent + 1) + "std::string cont_2_str = " + get_string_func_call("cont_2_val") + ";\n" +
+			append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ": \" + cont_1_str + \", \" + cont_2_str", indent + 1, false) +
+			get_end_curly_bracket(indent);
 	}
 	else if (property.type == property_type::special_vector) {
-		result = 
+		result += 
 			add_indent(indent) + "auto " + vector_obj_name_1 + " = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
 			add_indent(indent) + "auto " + vector_obj_name_2 + " = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
 			get_specialvector_size_check(object_name, property, indent) +
@@ -372,8 +319,12 @@ std::string get_object_property_check(const std::string& object_name, const prop
 
 	}
 	else if (property.type == property_type::array_other) {
-		result = get_dconarray_size_check(object_name, property, indent) +
+		result += get_dconarray_size_check(object_name, property, indent) +
 			get_dconarray_items_check(object_name, property, indent);
+	}
+	else {
+		// check if the custom type has a "to_string" function. If they do then use that
+		result += add_indent(indent) + "// Unsupported type id " + std::to_string(int(property.type)) + "\n";
 	}
 	return result;
 
@@ -396,9 +347,6 @@ std::string get_dcon_object_loop_start(const std::string& object_name, uint32_t&
 std::string get_dcon_relations_check(const relationship_object_def& object, uint32_t indent) {
 	std::string result{};
 	result.reserve(500);
-	if (object.name == "core") {
-		int c = 2;
-	}
 	for (uint32_t i = 0; i < object.indexed_objects.size(); i++) {
 		result += source_get_load_record_if_statement(object.name + "_" + object.indexed_objects[i].property_name, indent) +
 			get_start_curly_bracket(indent);
@@ -485,6 +433,7 @@ int main(int argc, char* argv[])
 
 	source_output += get_comment_header(input_file_name);
 	source_output += source_get_includes(header_file_name);
+	source_output += get_string_template_function_definition(0);
 	source_output += get_function_signature();
 	uint32_t indent = 1;
 	source_output += get_start_curly_bracket(indent);
