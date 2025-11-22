@@ -46,20 +46,6 @@ std::string get_dcon_typename_with_id(const std::string object_name) {
 	return result;
 }
 
-std::string get_indextype_from_size(uint32_t size) {
-	// one bit is used for bookeeping, so divide by 2 first
-	size = size / 2;
-	if (size <= std::numeric_limits<uint8_t>::max()) {
-		return "uint8_t";
-	}
-	else if (size <= std::numeric_limits<uint16_t>::max()) {
-		return "uint16_t";
-	}
-	else if (size <= std::numeric_limits<uint32_t>::max()) {
-		return "uint32_t";
-	}
-}
-
 std::string cast_expression_to_index_type(const std::string& type, const std::string& expression) {
 	return type + "(" + expression + ")";
 }
