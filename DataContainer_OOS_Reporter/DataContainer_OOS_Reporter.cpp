@@ -318,7 +318,7 @@ std::string get_object_property_check(const std::string& object_name, const prop
 			get_specialvector_items_check(object_name, property, indent);
 
 	}
-	else if (property.type == property_type::array_other) {
+	else if (property.type == property_type::array_other || property.type == property_type::array_bitfield) {
 		result += get_dconarray_size_check(object_name, property, indent) +
 			get_dconarray_items_check(object_name, property, indent);
 	}
