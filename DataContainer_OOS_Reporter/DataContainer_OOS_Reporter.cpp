@@ -356,18 +356,18 @@ std::string get_dcon_relations_check(const relationship_object_def& object, uint
 				get_start_curly_bracket(indent + 1) +
 				get_relationship_composite_index_if_comparison(object, indent + 2, i, "k") +
 				get_start_curly_bracket(indent + 2) +
-				add_indent(indent + 3) + "auto cont_1_val = std::to_string(" + get_dcon_object_variable_w_index(container_1_name, object.name, object.indexed_objects[0].property_name, dcon_obj_name, "k") + ".value);\n" +
-				add_indent(indent + 3) + "auto cont_2_val = std::to_string(" + get_dcon_object_variable_w_index(container_2_name, object.name, object.indexed_objects[0].property_name, dcon_obj_name, "k") + ".value);\n" +
-				append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" relation: \" + \"" + object.indexed_objects[0].property_name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 3, false) +
+				add_indent(indent + 3) + "auto cont_1_val = std::to_string(" + get_dcon_object_variable_w_index(container_1_name, object.name, object.indexed_objects[i].property_name, dcon_obj_name, "k") + ".value);\n" +
+				add_indent(indent + 3) + "auto cont_2_val = std::to_string(" + get_dcon_object_variable_w_index(container_2_name, object.name, object.indexed_objects[i].property_name, dcon_obj_name, "k") + ".value);\n" +
+				append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" relation: \" + \"" + object.indexed_objects[i].property_name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 3, false) +
 				get_end_curly_bracket(indent + 2) +
 				get_end_curly_bracket(indent + 1);
 		}
 		else {
 			result += get_relationship_index_if_comparison(object, indent + 1, i) +
 				get_start_curly_bracket(indent + 1) +
-				add_indent(indent + 2) + "auto cont_1_val = std::to_string(" + get_dcon_object_variable(container_1_name, object.name, object.indexed_objects[0].property_name, dcon_obj_name) + ".value);\n" +
-				add_indent(indent + 2) + "auto cont_2_val = std::to_string(" + get_dcon_object_variable(container_2_name, object.name, object.indexed_objects[0].property_name, dcon_obj_name) + ".value);\n" +
-				append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" relation: \" + \"" + object.indexed_objects[0].property_name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 2, false) +
+				add_indent(indent + 2) + "auto cont_1_val = std::to_string(" + get_dcon_object_variable(container_1_name, object.name, object.indexed_objects[i].property_name, dcon_obj_name) + ".value);\n" +
+				add_indent(indent + 2) + "auto cont_2_val = std::to_string(" + get_dcon_object_variable(container_2_name, object.name, object.indexed_objects[i].property_name, dcon_obj_name) + ".value);\n" +
+				append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" relation: \" + \"" + object.indexed_objects[i].property_name + ": \" + cont_1_val + \", \" + cont_2_val", indent + 2, false) +
 				get_end_curly_bracket(indent + 1);
 		}
 		result += get_end_curly_bracket(indent);
