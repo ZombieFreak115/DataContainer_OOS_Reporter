@@ -167,7 +167,7 @@ std::string get_string_template_function_definition(uint32_t indent) {
 		get_end_curly_bracket(indent + 1) +
 		add_indent(indent + 1) + "else\n" +
 		get_start_curly_bracket(indent + 1) +
-		add_indent(indent + 2) + "return \"\"\n" +
+		add_indent(indent + 2) + "return \"\";\n" +
 		get_end_curly_bracket(indent + 1) +
 		get_end_curly_bracket(indent);
 
