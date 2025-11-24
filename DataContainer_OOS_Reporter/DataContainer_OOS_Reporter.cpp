@@ -108,7 +108,7 @@ std::string get_relationship_composite_index_if_comparison(const relationship_ob
 }
 
 std::string source_get_includes(const std::string& header_filename) {
-	return "#include \"dcon_generated.hpp\"\n#include \"" + header_filename + "\"\n";
+	return "#include \"dcon_generated.hpp\"\n#include \"" + header_filename + "\"\n#include \"debug_string_convertions.hpp\"\n";
 }
 
 std::string source_get_initial_var_declariations(uint32_t indent) {
@@ -149,21 +149,21 @@ std::string get_string_template_function_definition(uint32_t indent) {
 	return add_indent(indent) + "template<typename T>\n" +
 		add_indent(indent) + "std::string get_string(T input)\n" +
 		get_start_curly_bracket(indent) +
-		add_indent(indent + 1) + "if constexpr(requires{ std::to_string(input); } )\n" +
+		add_indent(indent + 1) + "if constexpr(std::is_same<T, bool>::value)\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return input ? \"true\" : \"false\";\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else if constexpr(requires{ sys::to_debug_string(input); })\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return sys::to_debug_string(input);\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else if constexpr(requires{ std::to_string(input); } )\n" +
 		get_start_curly_bracket(indent + 1) +
 		add_indent(indent + 2) + "return std::to_string(input);\n" +
-		get_end_curly_bracket(indent + 1) +
-		add_indent(indent + 1) + "else if constexpr(requires{ input.to_string(); })\n" +
-		get_start_curly_bracket(indent + 1) +
-		add_indent(indent + 2) + "return input.to_string();\n" +
 		get_end_curly_bracket(indent + 1) +
 		add_indent(indent + 1) + "else if constexpr(requires{ std::to_string(input.value); })\n" +
 		get_start_curly_bracket(indent + 1) +
 		add_indent(indent + 2) + "return std::to_string(input.value);\n" +
-		get_end_curly_bracket(indent + 1) +
-		add_indent(indent + 1) + "else if constexpr(std::is_same<T, bool>::value)\n" +
-		get_start_curly_bracket(indent + 1) +
-		add_indent(indent + 2) + "return input ? \"true\" : \"false\";\n" +
 		get_end_curly_bracket(indent + 1) +
 		add_indent(indent + 1) + "else\n" +
 		get_start_curly_bracket(indent + 1) +
