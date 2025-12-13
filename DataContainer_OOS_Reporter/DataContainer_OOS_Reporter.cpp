@@ -56,6 +56,11 @@ std::string add_indent(uint32_t indent) {
 	return std::string(indent, '\t');
 }
 
+
+std::string add_compare_function_call(const std::string& value_1, const std::string& value_2) {
+	return "compare_values(" + value_1 + ", " + value_2 + ")";
+}
+
 std::string get_dcon_array_element(const std::string& object_name, const property_def& property, const std::string& container_name, bool integer_index) {
 	if (integer_index) {
 		return container_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + cast_expression_to_index_type(property.array_index_type, dcon_array_index_name) + ")";
@@ -78,33 +83,38 @@ std::string get_dcon_array_size(const std::string& object_name, const property_d
 }
 std::string get_dcon_array_element_if_comparison(const std::string& object_name, const property_def& property, uint32_t indent, bool integer_index) {
 	if (integer_index) {
-		return add_indent(indent) + "if(" + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + cast_expression_to_index_type(property.array_index_type, dcon_array_index_name) + ") != " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + cast_expression_to_index_type(property.array_index_type, dcon_array_index_name) + "))\n";
+		std::string dcon_expression = object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + cast_expression_to_index_type(property.array_index_type, dcon_array_index_name) + ")";
+		return add_indent(indent) + "if(!" +  add_compare_function_call( container_1_name + "." + dcon_expression,  container_2_name + "." + dcon_expression) + ")\n";
 	}
 	else {
-		return add_indent(indent) + "if(" + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + dcon_array_index_name + ") != " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + dcon_array_index_name + "))\n";
+		std::string dcon_expression = object_name + "_get_" + property.name + "(" + dcon_obj_name + ", " + dcon_array_index_name + ")";
+		return add_indent(indent) + "if(!" + add_compare_function_call(container_1_name + "." + dcon_expression, container_2_name + "." + dcon_expression)  +")\n";
 	}
 	
 }
 
 std::string get_dcon_array_size_if_comparison(const std::string& object_name, const property_def& property, uint32_t indent) {
-	return add_indent(indent) + "if(" + get_dcon_array_size(object_name, property, container_1_name) + " != " + get_dcon_array_size(object_name, property, container_2_name) + ")\n";
+	return add_indent(indent) + "if(!" + add_compare_function_call( get_dcon_array_size(object_name, property, container_1_name), get_dcon_array_size(object_name, property, container_2_name)) + ")\n";
 }
 
 
 std::string get_property_if_comparison(const std::string& object_name, const property_def& property, uint32_t indent) {
-	return add_indent(indent) + "if(" + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ")" + " != " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + "))\n";
+	std::string dcon_expression = object_name + "_get_" + property.name + "(" + dcon_obj_name + ")";
+	return add_indent(indent) + "if(!" + add_compare_function_call(container_1_name + "." + dcon_expression, container_2_name + "." + dcon_expression) + ")\n";
 }
 
 std::string get_variable_if_comparison(const std::string& var_1, const std::string& var_2, uint32_t indent) {
-	return add_indent(indent) + "if(" + var_1 + " != " + var_2 + ")\n";
+	return add_indent(indent) + "if(!" + add_compare_function_call(var_1, var_2) + ")\n";
 }
 
 std::string get_relationship_index_if_comparison(const relationship_object_def& object, uint32_t indent, uint8_t index_to_check) {
-	return add_indent(indent) + "if(" + container_1_name + "." + object.name + "_get_" + object.indexed_objects[index_to_check].property_name + "(" + dcon_obj_name + ")" + " != " + container_2_name + "." + object.name + "_get_" + object.indexed_objects[index_to_check].property_name + "(" + dcon_obj_name  + "))\n";
+	std::string dcon_expression = object.name + "_get_" + object.indexed_objects[index_to_check].property_name + "(" + dcon_obj_name + ")";
+	return add_indent(indent) + "if(!" + add_compare_function_call(container_1_name + "." + dcon_expression, container_2_name + "." + dcon_expression) + ")\n";
 }
 
 std::string get_relationship_composite_index_if_comparison(const relationship_object_def& object, uint32_t indent, uint8_t index_to_check, const std::string& composite_index_var) {
-	return add_indent(indent) + "if(" + container_1_name + "." + object.name + "_get_" + object.indexed_objects[index_to_check].property_name + "(" + dcon_obj_name + ", " +  composite_index_var + ")" + " != " + container_2_name + "." + object.name + "_get_" + object.indexed_objects[index_to_check].property_name + "(" + dcon_obj_name + ", " + composite_index_var + "))\n";
+	std::string dcon_expression = object.name + "_get_" + object.indexed_objects[index_to_check].property_name + "(" + dcon_obj_name + ", " + composite_index_var + ")";
+	return add_indent(indent) + "if(!" + add_compare_function_call(container_1_name + "." + dcon_expression, container_2_name + "." + dcon_expression) + ")\n";
 }
 
 std::string source_get_includes(const std::string& header_filename) {
@@ -142,6 +152,22 @@ std::string get_start_curly_bracket(uint32_t indent) {
 }
 std::string get_end_curly_bracket(uint32_t indent) {
 	return add_indent(indent) + "}\n";
+}
+
+
+std::string get_compare_function(uint32_t indent) {
+	return add_indent(indent) + "template<typename T>\n" +
+		add_indent(indent) + "bool compare_values(const T& val_1, const T& val_2)\n" +
+		get_start_curly_bracket(indent) +
+		add_indent(indent + 1) + "if constexpr(std::is_trivially_copyable<T>::value)\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return std::memcmp(&val_1, &val_2, sizeof(T)) == 0;\n" +
+		get_end_curly_bracket(indent + 1) +
+		add_indent(indent + 1) + "else\n" +
+		get_start_curly_bracket(indent + 1) +
+		add_indent(indent + 2) + "return val_1 == val_2;\n" +
+		get_end_curly_bracket(indent + 1) +
+		get_end_curly_bracket(indent);
 }
 
 
@@ -196,7 +222,7 @@ std::string get_report_object_header(const std::string& object_name, uint32_t in
 }
 
 std::string get_object_size_check(const std::string& object_name, uint32_t indent) {
-	return add_indent(indent) + "if(" + container_1_name + "." + object_name + "_size()" + " != " + container_2_name + "." + object_name + "_size())\n" +
+	return add_indent(indent) + "if(!" + add_compare_function_call(container_1_name + "." + object_name + "_size()", container_2_name + "." + object_name + "_size()") + ")\n" +
 		get_start_curly_bracket(indent) +
 		add_indent(indent + 1) + "std::string cont_1_size = std::to_string(" + container_1_name + "." + object_name + "_size());\n" +
 		add_indent(indent + 1) + "std::string cont_2_size = std::to_string(" + container_2_name + "." + object_name + "_size());\n" +
@@ -215,7 +241,7 @@ std::string get_dconarray_size_check(const std::string& object_name, const prope
 }
 
 std::string get_specialvector_size_check(const std::string& object_name, const property_def& property , uint32_t indent) {
-	return add_indent(indent) + "if(" + vector_obj_name_1 + "." + "size()" + " != " + vector_obj_name_2 + "." + "size())\n" +
+	return add_indent(indent) + "if(!" + add_compare_function_call(vector_obj_name_1 + "." + "size()", vector_obj_name_2 + "." + "size()") + ")\n" +
 		get_start_curly_bracket(indent) +
 		add_indent(indent + 1) + "std::string cont_1_size = std::to_string(" + vector_obj_name_1 + "." + "size());\n" +
 		add_indent(indent + 1) + "std::string cont_2_size = std::to_string(" + vector_obj_name_2 + "." + "size());\n" +
@@ -269,7 +295,7 @@ std::string get_specialvector_items_check(const std::string& object_name, const 
 	result += add_indent(indent) + "uint32_t min_arr_size = std::min(" + vector_obj_name_1 + "." + "size(), " + vector_obj_name_2 + "." + "size());\n" +
 		add_indent(indent) + "for(uint32_t j = 0;j < min_arr_size;j++)\n" +
 		get_start_curly_bracket(indent) +
-		add_indent(indent + 1) + "if(" + vector_obj_name_1 + "[j]" + " != " + vector_obj_name_2 + "[j]" + ")\n" +
+		add_indent(indent + 1) + "if(!" + add_compare_function_call(vector_obj_name_1 + "[j]", vector_obj_name_2 + "[j]") + ")\n" +
 		get_start_curly_bracket(indent + 1);
 	if (dcon_ids.contains(property.data_type)) {
 		result += add_indent(indent + 2) + get_dcon_typename(property.data_type) + " cont_1_arr_val = " + vector_obj_name_1 + "[j];\n" +
@@ -298,6 +324,15 @@ std::string get_object_property_check(const std::string& object_name, const prop
 			result += add_indent(indent) + get_dcon_typename(property.data_type) + " cont_1_val = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
 				add_indent(indent) + get_dcon_typename(property.data_type) + " cont_2_val = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n";
 		}
+		// handle std::array fields as if they were specialvectors, and return early
+		else if (property.data_type.starts_with("std::array<")) {
+			result +=
+				add_indent(indent) + "const auto& " + vector_obj_name_1 + " = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
+				add_indent(indent) + "const auto& " + vector_obj_name_2 + " = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
+				get_specialvector_size_check(object_name, property, indent) +
+				get_specialvector_items_check(object_name, property, indent);
+			return result;
+		}
 		else {
 			result += add_indent(indent) + "const auto& cont_1_val = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n" +
 				add_indent(indent) + "const auto& cont_2_val = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_name + ");\n";
@@ -323,7 +358,6 @@ std::string get_object_property_check(const std::string& object_name, const prop
 			get_dconarray_items_check(object_name, property, indent);
 	}
 	else {
-		// check if the custom type has a "to_string" function. If they do then use that
 		result += add_indent(indent) + "// Unsupported type id " + std::to_string(int(property.type)) + "\n";
 	}
 	return result;
@@ -434,6 +468,7 @@ int main(int argc, char* argv[])
 	source_output += get_comment_header(input_file_name);
 	source_output += source_get_includes(header_file_name);
 	source_output += get_string_template_function_definition(0);
+	source_output += get_compare_function(0);
 	source_output += get_function_signature();
 	uint32_t indent = 1;
 	source_output += get_start_curly_bracket(indent);
