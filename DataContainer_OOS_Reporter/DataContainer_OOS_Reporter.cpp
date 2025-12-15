@@ -255,7 +255,7 @@ std::string get_dconarray_items_check(const std::string& object_name, const prop
 	// we dont expect the total string to be larger than this, so pre-allocate
 	result.reserve(360);
 
-	result += add_indent(indent) + "uint32_t min_arr_size = std::min(" + get_dcon_array_size(object_name, property, container_1_name) + ", " + get_dcon_array_size(object_name, property, container_2_name) + ");\n" +
+	result += add_indent(indent) + "uint32_t min_arr_size = uint32_t(std::min(" + get_dcon_array_size(object_name, property, container_1_name) + ", " + get_dcon_array_size(object_name, property, container_2_name) + "));\n" +
 		add_indent(indent) + "for(uint32_t j = 0;j < min_arr_size;j++)\n" +
 		get_start_curly_bracket(indent);
 	bool integer_index = false;
@@ -292,7 +292,7 @@ std::string get_specialvector_items_check(const std::string& object_name, const 
 	// we dont expect the total string to be larger than this, so pre-allocate
 	result.reserve(360);
 
-	result += add_indent(indent) + "uint32_t min_arr_size = std::min(" + vector_obj_name_1 + "." + "size(), " + vector_obj_name_2 + "." + "size());\n" +
+	result += add_indent(indent) + "uint32_t min_arr_size = uint32_t(std::min(" + vector_obj_name_1 + "." + "size(), " + vector_obj_name_2 + "." + "size()));\n" +
 		add_indent(indent) + "for(uint32_t j = 0;j < min_arr_size;j++)\n" +
 		get_start_curly_bracket(indent) +
 		add_indent(indent + 1) + "if(!" + add_compare_function_call(vector_obj_name_1 + "[j]", vector_obj_name_2 + "[j]") + ")\n" +
