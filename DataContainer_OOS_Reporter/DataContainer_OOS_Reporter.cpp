@@ -168,7 +168,6 @@ std::string get_dcon_array_element_if_comparison(const std::string& object_name,
 		std::string dcon_expression = object_name + "_get_" + property.name + "(" + dcon_obj_instance_name + ", " + dcon_array_index_name + ")";
 		return add_indent(indent) + "if(!" + add_compare_function_call(container_1_name + "." + dcon_expression, container_2_name + "." + dcon_expression)  +")\n";
 	}
-	
 }
 
 std::string get_dcon_array_size_if_comparison(const std::string& object_name, const property_def& property, uint32_t indent) {
@@ -215,6 +214,14 @@ std::string get_oos_reporter_function_signature() {
 
 std::string get_data_reset_function_signature() {
 	return "void reset_data(dcon::data_container& " + container_1_name + ", const dcon::load_record& " + load_record_name + ")";
+}
+
+std::string get_data_reset_subfunction_signature(std::string object_name) {
+	return "void reset_data_" + object_name + "(dcon::data_container& " + container_1_name + ", const dcon::load_record& " + load_record_name + ")";
+}
+
+std::string call_data_reset_subfunction(uint32_t indent, std::string object_name) {
+	return add_indent(indent) + "reset_data_" + object_name + "(" + container_1_name + ", " + load_record_name +  ");\n";
 }
 
 std::string get_semicolon_newline() {
@@ -307,7 +314,7 @@ std::string get_object_size_check(const std::string& object_name, uint32_t inden
 		add_indent(indent + 1) + "std::string cont_2_size = std::to_string(" + container_2_name + "." + object_name + "_size());\n" +
 		append_to_final_report("\"Size mismatch in object: 1st size: \" + cont_1_size + \" 2nd size: \" + cont_2_size", indent + 1, false) +
 		get_end_curly_bracket(indent);
-   
+
 }
 
 std::string get_dconarray_size_check(const std::string& object_name, const property_def& property, uint32_t indent) {
@@ -387,7 +394,7 @@ std::string get_specialvector_items_check(const std::string& object_name, const 
 	result += add_indent(indent + 2) + "std::string cont_1_arr_str = " + get_string_func_call("cont_1_arr_val") + ";\n" +
 		add_indent(indent + 2) + "std::string cont_2_arr_str = " + get_string_func_call("cont_2_arr_val") + ";\n" +
 		append_to_final_report("\"ID: \" + std::to_string(" + dcon_obj_id + ") + \" property: \" + \"" + property.name + ", vector index: \" + std::to_string(j) + \": \" + cont_1_arr_str + \", \" + cont_2_arr_str", indent + 2, false);
-	
+
 	result += get_end_curly_bracket(indent + 1);
 	result += get_end_curly_bracket(indent);
 	return result;
@@ -425,7 +432,7 @@ std::string get_object_property_check(const std::string& object_name, const prop
 			get_end_curly_bracket(indent);
 	}
 	else if (property.type == property_type::special_vector) {
-		result += 
+		result +=
 			add_indent(indent) + "auto " + vector_obj_name_1 + " = " + container_1_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_instance_name + ");\n" +
 			add_indent(indent) + "auto " + vector_obj_name_2 + " = " + container_2_name + "." + object_name + "_get_" + property.name + "(" + dcon_obj_instance_name + ");\n" +
 			get_specialvector_size_check(object_name, property, indent) +
@@ -486,7 +493,7 @@ std::string get_dcon_relations_check(const relationship_object_def& object, uint
 		result += get_end_curly_bracket(indent);
 	}
 	return result;
-	
+
 }
 
 
@@ -556,7 +563,7 @@ int main(int argc, char* argv[])
 	// start namespace
 	source_output += get_start_namespace();
 	source_output += get_start_curly_bracket(0);
-	
+
 	source_output += get_string_template_function_definition(0);
 	source_output += get_compare_function(0);
 
@@ -601,12 +608,12 @@ int main(int argc, char* argv[])
 	indent--;
 	source_output += get_end_curly_bracket(indent);
 
-	// start constructing data reset function here
-	source_output += get_data_reset_function_signature();
-	source_output += get_start_curly_bracket(indent);
-	indent++;
 
 	for (auto& dcon_obj : parsed_file.relationship_objects) {
+		source_output += get_data_reset_subfunction_signature(dcon_obj.name);
+		source_output += get_start_curly_bracket(indent);
+		indent++;
+
 		source_output += get_neg_load_record_if_statement(dcon_obj.name, indent);
 		source_output += get_start_curly_bracket(indent);
 		indent++;
@@ -629,6 +636,19 @@ int main(int argc, char* argv[])
 		// end of else
 		indent--;
 		source_output += get_end_curly_bracket(indent);
+
+		indent--;
+		source_output += get_end_curly_bracket(indent);
+	}
+
+
+	// start constructing data reset function here
+	source_output += get_data_reset_function_signature();
+	source_output += get_start_curly_bracket(indent);
+	indent++;
+
+	for (auto& dcon_obj : parsed_file.relationship_objects) {
+		source_output += call_data_reset_subfunction(indent, dcon_obj.name);
 	}
 
 	// function end
