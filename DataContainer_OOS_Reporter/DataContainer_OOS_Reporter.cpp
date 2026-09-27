@@ -203,13 +203,22 @@ std::string source_get_initial_var_declariations(uint32_t indent) {
 	return add_indent(indent) + "std::string " + final_report_name + ";\n" +
 		   add_indent(indent) + final_report_name + ".reserve(104857600);\n";
 }
-
-
+std::string source_get_partial_var_declariations(uint32_t indent) {
+	// reserve stringbuffer of 10 MB for the part of the report (it may be quite big if there are alot of mismatches
+	return add_indent(indent) + "std::string " + final_report_name + ";\n" +
+		add_indent(indent) + final_report_name + ".reserve(10485760);\n";
+}
 std::string header_get_forward_declarations() {
 	return "struct load_record;\nclass data_container;\n";
 }
 std::string get_oos_reporter_function_signature() {
 	return "std::string generate_oos_report(const dcon::data_container& " + container_1_name + ", const dcon::data_container& " + container_2_name + ", const dcon::load_record& "  + load_record_name +  ")";
+}
+std::string get_oos_reporter_subfunction_signature(std::string object_name) {
+	return "std::string generate_oos_report_" + object_name + "(const dcon::data_container& " + container_1_name + ", const dcon::data_container& " + container_2_name + ", const dcon::load_record& "  + load_record_name +")";
+}
+std::string call_oos_reporter_subfunction(uint32_t indent, std::string object_name) {
+	return add_indent(indent) + final_report_name + " += generate_oos_report_" + object_name + "(" + container_1_name + ", " + container_2_name + ", " + load_record_name + ");\n";
 }
 
 std::string get_data_reset_function_signature() {
@@ -567,13 +576,14 @@ int main(int argc, char* argv[])
 	source_output += get_string_template_function_definition(0);
 	source_output += get_compare_function(0);
 
-	// start construction oos reporting function
-	source_output += get_oos_reporter_function_signature();
-	uint32_t indent = 1;
-	source_output += get_start_curly_bracket(indent);
-	source_output += source_get_initial_var_declariations(indent);
-
 	for (auto& dcon_obj : parsed_file.relationship_objects) {
+		uint32_t indent = 0;
+		source_output += get_oos_reporter_subfunction_signature(dcon_obj.name);
+		source_output += get_start_curly_bracket(indent);
+		indent++;
+
+		source_output += source_get_partial_var_declariations(indent);
+
 		source_output += get_load_record_if_statement(dcon_obj.name, indent);
 		source_output += get_start_curly_bracket(indent);
 		indent++;
@@ -600,6 +610,21 @@ int main(int argc, char* argv[])
 		indent--;
 		// object load record if statement end
 		source_output += get_end_curly_bracket(indent);
+
+		source_output += return_report(indent);
+
+		indent--;
+		source_output += get_end_curly_bracket(indent);
+	}
+
+	// start construction oos reporting function
+	source_output += get_oos_reporter_function_signature();
+	uint32_t indent = 1;
+	source_output += get_start_curly_bracket(indent);
+	source_output += source_get_initial_var_declariations(indent);
+
+	for (auto& dcon_obj : parsed_file.relationship_objects) {
+		source_output += call_oos_reporter_subfunction(indent, dcon_obj.name);
 	}
 
 	source_output += return_report(indent);
